@@ -26,6 +26,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.extern.slf4j.Slf4j;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -121,6 +122,10 @@ public class AuthServiceImpl implements AuthService {
         if (user.getStatus() == RegistrationStatus.EXPIRED) {
             throw new UnauthorizedException("Your subscription has expired.");
         }
+
+        LocalDate curr = LocalDate.now();
+        LocalDate exp = user.getSubscriptionEnd();
+        if(curr.isAfter(exp)) throw new UnauthorizedException("Your subscription has expired");
 
         SubscriptionPackage pkg = user.getSubscriptionPackage();
         if (pkg != null && pkg.getDeviceLimit() == 1) {
