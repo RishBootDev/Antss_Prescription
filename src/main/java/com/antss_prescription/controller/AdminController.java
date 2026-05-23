@@ -6,13 +6,17 @@ import com.antss_prescription.dto.response.ApiResponse;
 import com.antss_prescription.dto.response.DoctorAddonResponse;
 import com.antss_prescription.dto.response.UserResponse;
 import com.antss_prescription.entity.User;
+import com.antss_prescription.exception.BusinessException;
 import com.antss_prescription.exception.ResourceNotFoundException;
 import com.antss_prescription.repository.UserRepository;
+import com.antss_prescription.security.ApprovalTokenUtils;
 import com.antss_prescription.service.AdminService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
@@ -28,6 +32,12 @@ public class AdminController {
 
     private final AdminService adminService;
     private final UserRepository userRepository;
+
+    @Value("${app.jwt.secret}")
+    private String jwtSecret;
+
+    @Value("${app.admin.email}")
+    private String adminEmail;
 
     public AdminController(AdminService adminService, UserRepository userRepository) {
         this.adminService = adminService;
@@ -111,5 +121,92 @@ public class AdminController {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new ResourceNotFoundException("Admin", email));
         return user.getId();
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // ONE-CLICK EMAIL APPROVAL  (no JWT required — token-authenticated)
+    // ─────────────────────────────────────────────────────────────────────────
+
+    @GetMapping(value = "/approve-email", produces = MediaType.TEXT_HTML_VALUE)
+    @Operation(
+            summary = "One-click approval from admin email link (token-secured, no login needed)",
+            security = {}
+    )
+    public ResponseEntity<String> approveViaEmail(
+            @RequestParam UUID userId,
+            @RequestParam String token) {
+
+        boolean valid = ApprovalTokenUtils.verifyToken(
+                userId.toString(), adminEmail, jwtSecret, token);
+
+        if (!valid) {
+            return ResponseEntity.status(403)
+                    .contentType(MediaType.TEXT_HTML)
+                    .body(buildResultPage(
+                            false,
+                            "Invalid or Expired Link",
+                            "This approval link is invalid or has already been used. Please log in to the admin panel to manage registrations manually."
+                    ));
+        }
+
+        try {
+            adminService.approveUser(userId);
+        } catch (BusinessException ex) {
+            return ResponseEntity.badRequest()
+                    .contentType(MediaType.TEXT_HTML)
+                    .body(buildResultPage(
+                            false,
+                            "Approval Failed",
+                            ex.getMessage()
+                    ));
+        }
+
+        return ResponseEntity.ok()
+                .contentType(MediaType.TEXT_HTML)
+                .body(buildResultPage(
+                        true,
+                        "Registration Approved!",
+                        "The user has been successfully approved. Their subscription is now active and their login credentials have been emailed to them."
+                ));
+    }
+
+    // ─── HTML result page rendered in the admin's browser ────────────────────
+    private String buildResultPage(boolean success, String title, String message) {
+        String iconColor   = success ? "#10b981" : "#ef4444";
+        String borderColor = success ? "rgba(16,185,129,0.3)" : "rgba(239,68,68,0.3)";
+        String icon        = success ? "✓" : "✕";
+        String badgeBg     = success ? "rgba(16,185,129,0.15)" : "rgba(239,68,68,0.15)";
+
+        return "<!DOCTYPE html>" +
+                "<html lang=\"en\">" +
+                "<head>" +
+                "  <meta charset=\"UTF-8\">" +
+                "  <meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">" +
+                "  <title>" + title + " – Antss Prescription</title>" +
+                "  <style>" +
+                "    *{box-sizing:border-box;margin:0;padding:0}" +
+                "    body{min-height:100vh;display:flex;align-items:center;justify-content:center;" +
+                "         background:#0f172a;font-family:'Inter',system-ui,sans-serif;color:#f8fafc;padding:24px}" +
+                "    .card{background:#1e293b;border:1px solid rgba(255,255,255,0.07);border-radius:24px;" +
+                "          box-shadow:0 24px 48px rgba(0,0,0,0.4);max-width:500px;width:100%;padding:48px 40px;text-align:center}" +
+                "    .icon-wrap{width:72px;height:72px;border-radius:50%;border:2px solid " + borderColor + ";" +
+                "               background:" + badgeBg + ";display:flex;align-items:center;justify-content:center;margin:0 auto 28px}" +
+                "    .icon{font-size:32px;font-weight:700;color:" + iconColor + "}" +
+                "    .brand{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:2px;" +
+                "           color:#64748b;margin-bottom:12px}" +
+                "    h1{font-size:26px;font-weight:800;letter-spacing:-0.5px;margin-bottom:16px;color:#f1f5f9}" +
+                "    p{font-size:15px;line-height:1.7;color:#94a3b8}" +
+                "    .footer{margin-top:36px;font-size:12px;color:#475569;border-top:1px solid rgba(255,255,255,0.05);padding-top:20px}" +
+                "  </style>" +
+                "</head>" +
+                "<body>" +
+                "  <div class=\"card\">" +
+                "    <div class=\"icon-wrap\"><span class=\"icon\">" + icon + "</span></div>" +
+                "    <div class=\"brand\">Antss Prescription · Admin Action</div>" +
+                "    <h1>" + title + "</h1>" +
+                "    <p>" + message + "</p>" +
+                "    <div class=\"footer\">&copy; 2026 Antss Prescription. All rights reserved.</div>" +
+                "  </div>" +
+                "</body></html>";
     }
 }

@@ -9,6 +9,7 @@ import com.antss_prescription.exception.BusinessException;
 import com.antss_prescription.exception.ResourceNotFoundException;
 import com.antss_prescription.exception.UnauthorizedException;
 import com.antss_prescription.repository.*;
+import com.antss_prescription.security.ApprovalTokenUtils;
 import com.antss_prescription.security.JwtTokenProvider;
 import com.antss_prescription.service.AuthService;
 import com.antss_prescription.service.EmailService;
@@ -41,6 +42,12 @@ public class AuthServiceImpl implements AuthService {
 
     @Value("${app.admin.email}")
     private String adminEmail;
+
+    @Value("${app.jwt.secret}")
+    private String jwtSecret;
+
+    @Value("${app.base-url:http://localhost:2030}")
+    private String baseUrl;
 
     public AuthServiceImpl(UserRepository userRepository,
                            PackageRepository packageRepository,
@@ -157,9 +164,16 @@ public class AuthServiceImpl implements AuthService {
 
         log.info("New user registered: {}", savedUser.getEmail());
 
+        String approvalToken = ApprovalTokenUtils.generateToken(
+                savedUser.getId().toString(), adminEmail, jwtSecret);
+        String approvalUrl = baseUrl + "/api/admin/approve-email"
+                + "?userId=" + savedUser.getId()
+                + "&token=" + approvalToken;
+
         emailService.sendRegistrationNotificationToAdmin(
                 adminEmail, savedUser.getFullName(), request.getEntityName(),
-                savedUser.getEmail(), pkg.getPackageName(), pkg.getBaseDoctorLimit()
+                savedUser.getEmail(), pkg.getPackageName(), pkg.getBaseDoctorLimit(),
+                approvalUrl
         );
     }
 
