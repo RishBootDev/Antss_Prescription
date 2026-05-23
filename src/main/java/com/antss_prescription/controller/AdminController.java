@@ -123,10 +123,6 @@ public class AdminController {
         return user.getId();
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // ONE-CLICK EMAIL APPROVAL  (no JWT required — token-authenticated)
-    // ─────────────────────────────────────────────────────────────────────────
-
     @GetMapping(value = "/approve-email", produces = MediaType.TEXT_HTML_VALUE)
     @Operation(
             summary = "One-click approval from admin email link (token-secured, no login needed)",
@@ -170,8 +166,7 @@ public class AdminController {
                 ));
     }
 
-    // ─── HTML result page rendered in the admin's browser ────────────────────
-    private String buildResultPage(boolean success, String title, String message) {
+   private String buildResultPage(boolean success, String title, String message) {
         String iconColor   = success ? "#10b981" : "#ef4444";
         String borderColor = success ? "rgba(16,185,129,0.3)" : "rgba(239,68,68,0.3)";
         String icon        = success ? "✓" : "✕";
