@@ -27,6 +27,7 @@ public class Clinic {
     @Column(nullable = false, unique = true)
     private String clinicCode;
 
+    @Column(nullable = false, unique = true)
     private String registrationNumber;
 
     private String addressLine1;
@@ -37,12 +38,14 @@ public class Clinic {
 
     private String pincode;
 
+    @Column(nullable = false, unique = true)
     private String email;
 
+    @Column(nullable = false, unique = true)
     private String mobileNumber;
 
     @Column(nullable = false)
-    private Integer maxDoctorLimit = 0;
+    private Integer maxDoctorLimit = 1;
 
     @Column(nullable = false)
     private Integer activeDoctorCount = 0;

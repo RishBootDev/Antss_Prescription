@@ -20,18 +20,27 @@ public class Doctor {
     @Column(nullable = false, unique = true)
     private String doctorCode;
 
+    @Column(nullable = false)
     private String specialization;
 
+    @Column(nullable = false)
     private String qualification;
 
     private Integer experienceYears;
 
+    @Column(unique = true)
     private String email;
 
+    @Column(nullable = false, unique = true)
+    private String hfrId;
+
+    @Column(nullable = false, unique = true)
     private String mobileNumber;
 
+    @Column(nullable = false, unique = true)
     private String registrationNumber;
 
+    @Column(nullable = false, unique = true)
     private String signatureUrl;
 
     @ManyToOne(fetch = FetchType.LAZY)
